@@ -1,0 +1,114 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'EKS - Cluster & IAMRole'
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+
+  Namespace:
+    Description: The namespace of the service account
+    Default: 'dev'
+    Type: String
+
+  ServiceAccountName:
+    Description: The name of the service account
+    Default: 'dev-serviceaccount'
+    Type: String
+  
+  VpcIdStackName:
+    Type: String
+    Description: The stack name of CloudFormation that created VPC resource id.
+
+  VpcSubnetId1StackName:
+    Type: String
+    Description: The stack name of CloudFormation that created VPC Subnet 1 resource id.
+
+  VpcSubnetId2StackName:
+    Type: String
+    Description: The stack name of CloudFormation that created VPC Subnet 2 resource id.
+
+Resources:
+
+  # =========== EKS Cluster =========== #
+
+  # EKS Role
+  EksRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service: 'eks.amazonaws.com'
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonEKSClusterPolicy'
+        - 'arn:aws:iam::aws:policy/AmazonEKSServicePolicy'
+
+  # EKS Cluster Security Group
+  EksClusterSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for all nodes in the cluster
+      VpcId: !ImportValue
+        Fn::Sub: '${VpcIdStackName}'
+      Tags:
+      - Key: !Sub 'kubernetes.io/cluster/${AWS::StackName}-cluster'
+        Value: 'owned'
+      - Key: Name
+        Value: !Sub '${AWS::StackName}-cluster-securitygroup'
+
+  # EKS Cluster
+  EksCluster:
+    Type: 'AWS::EKS::Cluster'
+    Properties:
+      Name: !Sub '${AWS::StackName}-cluster'
+      Version: 1.31
+      RoleArn: !GetAtt EksRole.Arn
+      ResourcesVpcConfig:
+        SecurityGroupIds:
+          - !Ref EksClusterSecurityGroup
+        SubnetIds:
+          - Fn::ImportValue: !Sub '${VpcSubnetId1StackName}'
+          - Fn::ImportValue: !Sub '${VpcSubnetId2StackName}'
+
+
+  # =========== EKS Cluster OIDC and Role & Policy for ServiceAccount to access Route53 =========== #
+
+  # EKS OIDC Provider: The purpose of this resource is to create an OIDC identity provider for the cluster.
+  # This is required to allow IAM roles to be assumed by the service accounts in the cluster.
+  # The pod running in the cluster will assume the IAM role that is mapped to the service account.
+  # The IAM role will have the necessary permissions to access AWS resources.
+
+  # This one will mainly use for cert-manager chart to create/update the Route53 DNS records.
+  OIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: !GetAtt EksCluster.OpenIdConnectIssuerUrl
+      ClientIdList: 
+        - sts.amazonaws.com
+      Tags: 
+        - Key: !Sub 'kubernetes.io/cluster/${AWS::StackName}-cluster'
+          Value: 'owned'
+
+Outputs:
+  EksClusterName:
+    Description: The EKS Cluster Name
+    Value: !Sub '${AWS::StackName}-cluster'
+    Export:
+      Name: !Sub '${AWS::StackName}-EksClusterName'
+
+  EksClusterSecurityGroupId:
+    Description: The EKS Cluster Name
+    Value: !Ref EksClusterSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-EksClusterSecurityGroupId'
+
+  EksClusterOIDCProvider:
+    Description: The EKS Cluster Name
+    Value: !GetAtt EksCluster.OpenIdConnectIssuerUrl
+    Export:
+      Name: !Sub '${AWS::StackName}-EksClusterOIDCProvider'

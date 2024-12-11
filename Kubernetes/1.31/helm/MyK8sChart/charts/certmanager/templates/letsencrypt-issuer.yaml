@@ -1,0 +1,33 @@
+{{- if and (hasKey .Values "dnsProvider") (hasKey .Values.dnsProvider "route53") }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ .Release.Name }}-letsencrypt-issuer
+spec:
+  acme:
+    # The ACME server URL
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # Email address used for ACME registration
+    email: triet.nguyen@decisiontree.tech
+    # Name of a secret used to store the ACME account private key
+    privateKeySecretRef:
+      name: {{ .Release.Name }}-letsencrypt-secret
+
+    # Enable the HTTP-01 challenge provider
+    solvers:
+    - dns01:
+        route53:
+          region: {{ .Values.dnsProvider.route53.region }}
+          role: {{ .Values.dnsProvider.route53.role }}
+          auth:
+            kubernetes:
+              serviceAccountRef:
+                name: {{ .Release.Name }}-serviceaccount
+
+          # accessKeyIDSecretRef:
+          #   name: {{ .Release.Name }}-route53-creds-secret
+          #   key: access-key-id
+          # secretAccessKeySecretRef:
+          #   name: {{ .Release.Name }}-route53-creds-secret
+          #   key: secret-access-key
+{{- end }}

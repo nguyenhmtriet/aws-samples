@@ -1,0 +1,123 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'EC2 - VPC'
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+
+  CidrBlock:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: The CIDR range for the VPC. This should be a valid private (RFC 1918) CIDR range.
+
+  PublicSubnet1CidrBlock:
+    Type: String
+    Default: 10.0.0.0/20
+    Description: The CIDR range for the public subnet 1.
+
+  PrivateSubnet1CidrBlock:
+    Type: String
+    Default: 10.0.16.0/20
+    Description: The CIDR range for the private subnet 1.
+
+  PrivateSubnet2CidrBlock:
+    Type: String
+    Default: 10.0.32.0/20
+    Description: The CIDR range for the private subnet 2.
+    
+Resources:
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Ref CidrBlock
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}'
+
+  # This subnet is for instances that need to be directly accessible from the internet
+  # Located in the 1st Availability Zone
+  PublicSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnet1CidrBlock
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-publicsubnet1'
+
+  # These subnets are for instances that should not be directly accessible from the internet
+  # Located in the 1st Availability Zone
+  PrivateSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnet1CidrBlock
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-privatesubnet1'
+
+  # These subnets are for instances that should not be directly accessible from the internet
+  # Located in the 2nd Availability Zone
+  PrivateSubnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnet2CidrBlock
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-privatesubnet2'
+ 
+Outputs:
+  VpcId:
+    Description: The VPC Id
+    Value: !Ref VPC
+    Export:
+      Name: !Sub '${AWS::StackName}-VpcId'
+
+  PublicSubnetId1:
+    Description: The Public Subnet Id 1 of VPC
+    Value: !Ref PublicSubnet1
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicSubnetId1'
+
+  PrivateSubnetId1:
+    Description: The Private Subnet Id 1 of VPC
+    Value: !Ref PrivateSubnet1
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateSubnetId1'
+
+  PrivateSubnetId2:
+    Description: The Private Subnet Id 2 of VPC
+    Value: !Ref PrivateSubnet2
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateSubnetId2'
+
+  VpcCidrBlock:
+    Description: The CIDR range for the VPC.
+    Value: !Ref CidrBlock
+    Export:
+      Name: !Sub '${AWS::StackName}-VpcCidrBlock'
+
+  PublicSubnet1CidrBlock:
+    Description: The CIDR Block of Public Subnet 1
+    Value: !Ref PublicSubnet1CidrBlock
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicSubnet1CidrBlock'
+
+  PrivateSubnet1CidrBlock:
+    Description: The CIDR Block of Private Subnet 1
+    Value: !Ref PrivateSubnet1CidrBlock
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateSubnet1CidrBlock'
+
+  PrivateSubnet2CidrBlock:
+    Description: The CIDR Block of Private Subnet 1
+    Value: !Ref PrivateSubnet2CidrBlock
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateSubnet2CidrBlock'

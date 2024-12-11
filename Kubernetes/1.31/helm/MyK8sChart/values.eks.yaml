@@ -1,0 +1,51 @@
+secrets:
+  tlsFileName: mantaraysandbox
+  route53creds:
+    tlsPassword: # Must be provided
+  dockerRegcred:
+    server: https://index.docker.io/v1/
+    username: # Must be provided
+    password: # Must be provided
+    email: # Must be provided
+
+certmanager:
+  dnsProvider:
+    route53:
+      region: # Must be provided
+      role: # Must be provided "arn:aws:iam::<AWS_ACCOUNT_ID>:role/<IAM_ROLE_NAME>"
+  root:
+    commonName: # Must be provided
+    dnsNames: # Must be provided
+  angular:
+    commonName: # Must be provided
+    dnsNames: # Must be provided
+  authserver:
+    commonName: # Must be provided
+    dnsNames: # Must be provided
+  gateway:
+    commonName: # Must be provided
+    dnsNames: # Must be provided
+
+rbac:
+  serviceAccountName: serviceaccount
+
+serviceaccount:
+  annotations:
+    - name: "eks.amazonaws.com/role-arn"
+      value: # Must be provided "arn:aws:iam::<AWS_ACCOUNT_ID>:role/<IAM_ROLE_NAME>"
+
+
+global:
+  imagePullSecrets: docker-regcred-secret
+  nodeSelector:
+    kubernetes.io/os: linux
+    kubernetes.io/hostname: # Must be provided
+    eks.amazonaws.com/nodegroup: # Must be provided
+  ingress:
+    className: "nginx"
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: "/"
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
+      nginx.ingress.kubernetes.io/proxy-buffer-size: 32k
+      nginx.ingress.kubernetes.io/proxy-buffers-number: "8"

@@ -1,0 +1,14 @@
+{{- if hasKey .Values "serviceAccountName" }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Release.Name }}-certmanager-tokenrequest-rolebinding
+subjects:
+  - kind: ServiceAccount
+    name: cert-manager
+    namespace: cert-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Release.Name }}-certmanager-tokenrequest-role
+{{- end }}

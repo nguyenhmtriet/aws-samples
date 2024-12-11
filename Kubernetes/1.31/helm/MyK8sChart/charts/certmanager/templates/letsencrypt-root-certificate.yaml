@@ -1,0 +1,12 @@
+{{- if hasKey .Values "root" }}
+{{- if and (hasKey .Values.root "commonName") (hasKey .Values.root "dnsNames") }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Release.Name }}-letsencrypt-root-certificate
+spec:
+  secretName: {{ .Release.Name }}-letsencrypt-root-secret
+  {{- $dict := dict "Values" .Values.root "Release" .Release }}
+  {{- include "myk8schart.certificateSpec" $dict | nindent 2 }}
+{{- end }}
+{{- end }}

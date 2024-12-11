@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'EKS IRSA - IAM Role for Service Account'
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+
+  EksClusterName:
+    Description: The created EKS Cluster resource name.
+    Type: String
+
+  EksClusterOIDCProviderStackName:
+    Type: String
+    Description: The stack name of CloudFormation that created EKS OIDC Provider url.
+
+  Namespace:
+    Description: The namespace of the service account
+    Type: String
+
+  ServiceAccountName:
+    Description: The name of the service account
+    Type: String
+
+Resources:
+  Route53AccessPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub '${AWS::StackName}-Route53AccessPolicy'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action: 'route53:GetChange'
+            Effect: 'Allow'
+            Resource: 'arn:aws:route53:::change/*'
+
+          - Action:
+              - 'route53:ChangeResourceRecordSets'
+              - 'route53:ListResourceRecordSets'
+            Effect: 'Allow'
+            Resource: 'arn:aws:route53:::hostedzone/*'
+
+          - Action: 'route53:ListHostedZonesByName'
+            Effect: 'Allow'
+            Resource: '*'
+      Roles:
+        - !Ref ServiceAccountRoleToRoute53Policy
+
+  ServiceAccountRoleToRoute53Policy:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-ServiceAccountRoleToRoute53AccessPolicy'
+      AssumeRolePolicyDocument:
+        Fn::Sub:
+          - '{
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "sts:AssumeRoleWithWebIdentity",
+                  "Principal": {
+                    "Federated": "arn:aws:iam::${AWS::AccountId}:oidc-provider/${OpenIdConnectIssuer}"
+                  },
+                  "Condition": {
+                    "StringEquals": {
+                      "${OpenIdConnectIssuer}:aud": "sts.amazonaws.com",
+                      "${OpenIdConnectIssuer}:sub": "system:serviceaccount:${Namespace}:${ServiceAccountName}"
+                    }
+                  }
+                }
+              ]
+            }'
+          - { OpenIdConnectIssuer: !Select [1, !Split ["https://", Fn::ImportValue: !Sub '${EksClusterOIDCProviderStackName}' ]] }
+      Tags: 
+        - Key: !Sub 'kubernetes.io/cluster/${EksClusterName}'
+          Value: 'owned'

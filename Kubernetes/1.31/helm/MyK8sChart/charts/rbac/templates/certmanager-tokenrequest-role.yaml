@@ -1,0 +1,11 @@
+{{- if hasKey .Values "serviceAccountName" }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Release.Name }}-certmanager-tokenrequest-role
+rules:
+  - apiGroups: ['']
+    resources: ['serviceaccounts/token']
+    resourceNames: [{{ printf "%s-%s" .Release.Name .Values.serviceAccountName | quote }}] # Release Name: dev, Service Account Name: dev-serviceaccount
+    verbs: ['create']
+{{- end }}
